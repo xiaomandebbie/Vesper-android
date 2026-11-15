@@ -160,13 +160,13 @@ async def android_screenshot():
 
 @mcp.tool()
 async def android_ui_state() -> dict:
-    """Read the UI tree. May contain private information. No taps."""
+    """Read the UI tree and screen size. WeChat returns an empty tree on purpose."""
     return {"result": await phone_request("state", {"filter": False})}
 
 
 @mcp.tool()
 async def android_tap(x: int, y: int) -> dict:
-    """Tap original-screenshot coordinates. May hit Send; inspect the screen first."""
+    """Tap original-screen coordinates. May hit Send; inspect the screen first."""
     if x < 0 or y < 0:
         raise ValueError("Coordinates must be nonnegative")
     return {"result": await phone_request("tap", {"x": x, "y": y})}
@@ -197,7 +197,7 @@ async def android_back() -> dict:
 
 @mcp.tool()
 async def android_swipe(start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 400) -> dict:
-    """Swipe using original-screenshot coordinates; duration in ms."""
+    """Swipe using original-screen coordinates; duration in ms."""
     if min(start_x, start_y, end_x, end_y) < 0 or not 100 <= duration <= 3000:
         raise ValueError("Invalid coordinates or duration")
     return {
@@ -210,6 +210,36 @@ async def android_swipe(start_x: int, start_y: int, end_x: int, end_y: int, dura
                 "endY": end_y,
                 "duration": duration,
             },
+        )
+    }
+
+
+@mcp.tool()
+async def android_clipboard_set(text: str) -> dict:
+    """Put text on the phone clipboard. Does not paste, type, or send."""
+    if not text or len(text) > 10000:
+        raise ValueError("Text must contain 1 to 10000 characters")
+    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    return {"result": await phone_request("clipboard/set", {"text_base64": encoded})}
+
+
+@mcp.tool()
+async def android_clipboard_get() -> dict:
+    """Read the phone clipboard. Needs Mobilerun Keyboard selected. May contain private information."""
+    return {"result": await phone_request("clipboard/get")}
+
+
+@mcp.tool()
+async def android_long_press(x: int, y: int, duration: int = 600) -> dict:
+    """Long-press original-screen coordinates; opens the paste menu in a text field."""
+    if x < 0 or y < 0:
+        raise ValueError("Coordinates must be nonnegative")
+    if not 300 <= duration <= 3000:
+        raise ValueError("Duration must be 300 to 3000 ms")
+    return {
+        "result": await phone_request(
+            "swipe",
+            {"startX": x, "startY": y, "endX": x, "endY": y, "duration": duration},
         )
     }
 
