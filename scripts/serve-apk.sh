@@ -3,7 +3,7 @@
 # VPS 把 apk 拉下来，在 Caddy 的 android 站点块里临时开一个带随机路径的下载地址。
 #
 #   sudo bash scripts/serve-apk.sh            ← 下载并开放
-#   sudo bash scripts/serve-apk.sh --stop     ← 装完关掉
+#   sudo bash scripts/serve-apk.sh --stop     ← 装完关掉并清干净
 #
 # 路径带 24 字节随机串，没有这串猜不到；但它不是鉴权，装完就 --stop。
 
@@ -12,6 +12,7 @@ set -euo pipefail
 APP_DIR=/opt/android-mcp
 PUBLIC_DIR="$APP_DIR/public"
 STATE_FILE="$APP_DIR/.apk-dl-token"
+URL_FILE="$APP_DIR/.apk-url"
 PATCH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/caddy_apk_patch.py"
 
 PORTAL_VERSION="${PORTAL_VERSION:-0.8.2}"
@@ -40,8 +41,16 @@ reload_caddy() {
 if [ "${1:-}" = "--stop" ]; then
     python3 "$PATCH" "$HOST" --remove
     reload_caddy
-    rm -rf "$PUBLIC_DIR" "$STATE_FILE"
-    echo "✓ 下载路径已关闭，apk 和随机串已删。桥本身不受影响。"
+    # apk、随机串、写下的完整地址，以及 patch 留的 Caddyfile 备份都要清
+    # （备份里嵌着那个随机串，留着没意义）
+    rm -rf "$PUBLIC_DIR" "$STATE_FILE" "$URL_FILE" /etc/caddy/Caddyfile.bak-apk
+    echo "✓ 下载路径已关闭。apk、随机串、.apk-url 和 Caddyfile.bak-apk 已删。"
+    echo "  桥本身不受影响。"
+    if grep -q '/dl/' /etc/caddy/Caddyfile; then
+        echo "⚠ /etc/caddy/Caddyfile 里还有 /dl/ 字样，自己看一眼" >&2
+    else
+        echo "✓ Caddyfile 里已无 /dl/ 路径"
+    fi
     exit 0
 fi
 
@@ -83,14 +92,15 @@ chmod 755 "$PUBLIC_DIR"
 chmod 644 "$PUBLIC_DIR/$APK_NAME"
 
 URL="https://${HOST}/dl/${DL_TOKEN}/${APK_NAME}"
+printf '%s\n' "$URL" > "$URL_FILE"
+chmod 600 "$URL_FILE"
+
 echo
 echo "=== 开好了 ==="
 echo "自己读完整地址，用手机浏览器打开："
-echo "  cat $APP_DIR/.apk-url"
-printf '%s\n' "$URL" > "$APP_DIR/.apk-url"
-chmod 600 "$APP_DIR/.apk-url"
+echo "  cat $URL_FILE"
 echo
-echo "本地自检（应该返回 200）："
+echo "本地自检（请求头 1KB，返回 206 Partial Content 就是对的）："
 curl -s -o /dev/null -w '  HTTP %{http_code}  %{size_download} bytes\n' -r 0-1023 "$URL" || true
 echo
 echo "装完立刻关掉："
