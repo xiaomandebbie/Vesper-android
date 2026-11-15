@@ -1,0 +1,15 @@
+# token 和本机实际配置绝不进仓库
+.env
+.env.local
+*.pem
+*.key
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# editor / os
+.DS_Store
+*.swp

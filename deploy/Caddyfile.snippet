@@ -1,0 +1,25 @@
+# 追加到 /etc/caddy/Caddyfile。
+# 这台机器的 443 大概率在 Caddy 手里（aru.vesperphosphor.online 就是它反代到 127.0.0.1:8787 的），
+# 那就用这一份，别去跑 certbot --nginx —— 证书 Caddy 自己会申请和续。
+
+android.vesperphosphor.online {
+	# 安卓 Portal 反向连接。Caddy 自动处理 WebSocket upgrade，不用额外写 header。
+	handle /android/join {
+		reverse_proxy 127.0.0.1:18765 {
+			flush_interval -1
+		}
+	}
+
+	# Aru 的 MCP 连接
+	handle /mcp* {
+		reverse_proxy 127.0.0.1:18766 {
+			# Aru 不是浏览器，不一定带 Origin；MCP 侧开着 DNS rebinding 保护，缺了会 400。
+			header_up Origin https://android.vesperphosphor.online
+			flush_interval -1
+		}
+	}
+
+	handle {
+		respond 404
+	}
+}

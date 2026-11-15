@@ -1,0 +1,18 @@
+[Unit]
+Description=Android MCP Bridge (VPS edition)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/android-mcp
+EnvironmentFile=/opt/android-mcp/.env
+ExecStart=/opt/android-mcp/.venv/bin/python /opt/android-mcp/android_mcp_bridge_vps.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

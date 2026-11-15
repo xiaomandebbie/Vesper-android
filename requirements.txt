@@ -1,0 +1,4 @@
+# 版本来自 Chronos & Kairos 2026-11-11 实测通过的那套，不要随手升
+websockets==15.0.1
+mcp==1.30.0
+uvicorn>=0.30
